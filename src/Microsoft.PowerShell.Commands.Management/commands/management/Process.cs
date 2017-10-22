@@ -1780,6 +1780,26 @@ namespace Microsoft.PowerShell.Commands
         public SwitchParameter Wait { get; set; }
 
         /// <summary>
+        /// If specified, wait for this number of seconds
+        /// </summary>
+        [Parameter]
+        [Alias("TimeoutSec")]
+        [ValidateNotNullOrEmpty]
+        [ValidateRange(1, 32767)]
+        public int Timeout
+        {
+            get
+            {
+                return _timeout;
+            }
+            set
+            {
+                _timeout = value * 1000;
+            }
+        }
+        private int _timeout = System.Threading.Timeout.Infinite;
+
+        /// <summary>
         ///  Default Environment
         /// </summary>
         [Parameter(ParameterSetName = "Default")]
