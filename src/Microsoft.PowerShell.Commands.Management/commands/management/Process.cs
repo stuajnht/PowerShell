@@ -1795,9 +1795,11 @@ namespace Microsoft.PowerShell.Commands
             set
             {
                 _timeout = value * 1000;
+                _timeOutSpecified = true;
             }
         }
         private int _timeout = System.Threading.Timeout.Infinite;
+        private bool _timeOutSpecified;
 
         /// <summary>
         ///  Default Environment
@@ -2033,7 +2035,7 @@ namespace Microsoft.PowerShell.Commands
                 }
             }
 
-            if (Wait.IsPresent)
+            if (Wait.IsPresent || _timeOutSpecified)
             {
                 if (process != null)
                 {
@@ -2048,8 +2050,12 @@ namespace Microsoft.PowerShell.Commands
                         ProcessCollection jobObject = new ProcessCollection();
                         if (jobObject.AssignProcessToJobObject(process))
                         {
-                            // Wait for the job object to finish
-                            jobObject.WaitOne(_waithandle);
+                            // Wait for the job object to finish, or kill it if a timeout occurs
+                            jobObject.WaitOne(_waithandle, _timeout);
+                            if (!process.HasExited)
+                            {
+                                process.Kill();
+                            }
                         }
                         else if (!process.HasExited)
                         {
@@ -2625,12 +2631,15 @@ namespace Microsoft.PowerShell.Commands
         /// <param name="waitHandleToUse">
         /// WaitHandle to use for waiting on the job object.
         /// </param>
-        internal void WaitOne(ManualResetEvent waitHandleToUse)
+        /// <param name="timeout">
+        /// Wait for this number of milliseconds before a time-out occurs
+        /// </param>
+        internal void WaitOne(ManualResetEvent waitHandleToUse, Int32 timeout = Timeout.Infinite)
         {
             TimerCallback jobObjectStatusCb = this.CheckJobStatus;
             using (Timer stateTimer = new Timer(jobObjectStatusCb, waitHandleToUse, 0, 1000))
             {
-                waitHandleToUse.WaitOne();
+                waitHandleToUse.WaitOne(timeout);
             }
         }
     }
