@@ -2151,7 +2151,7 @@ namespace Microsoft.PowerShell.Commands
 
         /// <summary>
         /// Attempt to stop the process when the timeout has expired.
-        /// <see cref="ProcessBaseCommand.StopProcessCommand" /> is used to stop the process
+        /// <see cref="StopProcessCommand" /> is used to stop the process
         /// </summary>
         /// <param name="process">
         /// The process that should be stopped
@@ -2163,6 +2163,10 @@ namespace Microsoft.PowerShell.Commands
             foreach (Process p in stop.Invoke<Process>())
             {
             }
+
+            string message = StringUtil.Format(ProcessResources.StartProcessTimeoutExceeded, new object[] { process.ProcessName, process.Id });
+            ErrorRecord er = new ErrorRecord(new TimeoutException(message), "StartProcessTimeoutExceeded", ErrorCategory.OperationTimeout, process);
+            ThrowTerminatingError(er);
         }
 
         private Process Start(ProcessStartInfo startInfo)
