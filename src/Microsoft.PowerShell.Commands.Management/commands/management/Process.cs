@@ -2054,7 +2054,7 @@ namespace Microsoft.PowerShell.Commands
                             jobObject.WaitOne(_waithandle, _timeout);
                             if (!process.HasExited)
                             {
-                                process.Kill();
+                                StopProcessOnTimeout(process);
                             }
                         }
                         else if (!process.HasExited)
@@ -2146,6 +2146,22 @@ namespace Microsoft.PowerShell.Commands
                 {
                     processEnvironment.Add(entry.Key.ToString(), entry.Value.ToString());
                 }
+            }
+        }
+
+        /// <summary>
+        /// Attempt to stop the process when the timeout has expired.
+        /// <see cref="ProcessBaseCommand.StopProcessCommand" /> is used to stop the process
+        /// </summary>
+        /// <param name="process">
+        /// The process that should be stopped
+        /// </param>
+        private void StopProcessOnTimeout(Process process)
+        {
+            StopProcessCommand stop = new StopProcessCommand();
+            stop.Id = new int[] { process.Id };
+            foreach (Process p in stop.Invoke<Process>())
+            {
             }
         }
 
