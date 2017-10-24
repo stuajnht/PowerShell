@@ -2158,6 +2158,21 @@ namespace Microsoft.PowerShell.Commands
         /// </param>
         private void StopProcessOnTimeout(Process process)
         {
+#if UNIX
+            // TODO: Get parent processes from /proc/<id>/stat
+#else
+            // TODO: Use equivalent `wmic process where (ParentProcessId=<id>) get ProcessId`
+            string searchQuery = "Select ProcessID From Win32_Process Where ParentProcessId=" + process.Id;
+            using (CimSession cimSession = CimSession.Create(null))
+            {
+                IEnumerable<CimInstance> processCollection =
+                    cimSession.QueryInstances("root/cimv2", "WQL", searchQuery);
+                foreach (CimInstance processInstance in processCollection)
+                {
+                    Console.WriteLine("ProcessInstance: " + processInstance);
+                }
+            }
+#endif
             StopProcessCommand stop = new StopProcessCommand();
             stop.Id = new int[] { process.Id };
             foreach (Process p in stop.Invoke<Process>())
