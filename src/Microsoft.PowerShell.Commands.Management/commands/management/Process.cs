@@ -2169,7 +2169,7 @@ namespace Microsoft.PowerShell.Commands
                     cimSession.QueryInstances("root/cimv2", "WQL", searchQuery);
                 foreach (CimInstance processInstance in processCollection)
                 {
-                    Console.WriteLine("ProcessInstance: " + processInstance);
+                    Console.WriteLine("Child PID: " + processInstance.CimInstanceProperties["Handle"].Value);
                 }
             }
 #endif
