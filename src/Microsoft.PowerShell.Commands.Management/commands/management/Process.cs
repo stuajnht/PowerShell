@@ -2158,9 +2158,8 @@ namespace Microsoft.PowerShell.Commands
         /// </param>
         private void StopProcessOnTimeout(Process process)
         {
+            List<int> stopProcessIds = new List<int>(process.Id);
             int childId;
-            List<int> stopProcessIds = new List<int>();
-            stopProcessIds.Add(process.Id);
 #if UNIX
             // TODO: Get parent processes from /proc/<id>/stat
 #else
