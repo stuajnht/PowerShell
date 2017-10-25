@@ -2158,6 +2158,9 @@ namespace Microsoft.PowerShell.Commands
         /// </param>
         private void StopProcessOnTimeout(Process process)
         {
+            int childId;
+            List<int> stopProcessIds = new List<int>();
+            stopProcessIds.Add(process.Id);
 #if UNIX
             // TODO: Get parent processes from /proc/<id>/stat
 #else
@@ -2169,12 +2172,16 @@ namespace Microsoft.PowerShell.Commands
                     cimSession.QueryInstances("root/cimv2", "WQL", searchQuery);
                 foreach (CimInstance processInstance in processCollection)
                 {
-                    Console.WriteLine("Child PID: " + processInstance.CimInstanceProperties["Handle"].Value);
+                    if (int.TryParse(processInstance.CimInstanceProperties["Handle"].Value.ToString(),
+                                     out childId))
+                    {
+                        stopProcessIds.Add(childId);
+                    }
                 }
             }
 #endif
             StopProcessCommand stop = new StopProcessCommand();
-            stop.Id = new int[] { process.Id };
+            stop.Id = stopProcessIds.ToArray();
             foreach (Process p in stop.Invoke<Process>())
             {
             }
