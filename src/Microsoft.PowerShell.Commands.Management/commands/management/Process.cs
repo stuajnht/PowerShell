@@ -2158,13 +2158,34 @@ namespace Microsoft.PowerShell.Commands
         /// </param>
         private void StopProcessOnTimeout(Process process)
         {
-            List<int> stopProcessIds = new List<int>(process.Id);
+            StopProcessCommand stop = new StopProcessCommand();
+            stop.Id = GetProcessTreeIds(process.Id);
+            foreach (Process p in stop.Invoke<Process>())
+            {
+            }
+
+            string message = StringUtil.Format(ProcessResources.StartProcessTimeoutExceeded, new object[] { process.ProcessName, process.Id });
+            ErrorRecord er = new ErrorRecord(new TimeoutException(message), "StartProcessTimeoutExceeded", ErrorCategory.OperationTimeout, process);
+            ThrowTerminatingError(er);
+        }
+
+        /// <summary>
+        /// Recursively gets IDs of descendent processes, started by a process
+        /// </summary>
+        /// <param name="processId">
+        /// The parent process ID
+        /// </param>
+        /// <returns>
+        /// IDs of the parent process and all its descendents
+        /// </returns>
+        private int[] GetProcessTreeIds(int processId)
+        {
+            List<int> stopProcessIds = new List<int> {processId};
             int childId;
 #if UNIX
             // TODO: Get parent processes from /proc/<id>/stat
 #else
-            // TODO: Use equivalent `wmic process where (ParentProcessId=<id>) get ProcessId`
-            string searchQuery = "Select ProcessID From Win32_Process Where ParentProcessId=" + process.Id;
+            string searchQuery = "Select ProcessID From Win32_Process Where ParentProcessId=" + processId;
             using (CimSession cimSession = CimSession.Create(null))
             {
                 IEnumerable<CimInstance> processCollection =
@@ -2174,20 +2195,12 @@ namespace Microsoft.PowerShell.Commands
                     if (int.TryParse(processInstance.CimInstanceProperties["Handle"].Value.ToString(),
                                      out childId))
                     {
-                        stopProcessIds.Add(childId);
+                        stopProcessIds.AddRange(GetProcessTreeIds(childId));
                     }
                 }
             }
 #endif
-            StopProcessCommand stop = new StopProcessCommand();
-            stop.Id = stopProcessIds.ToArray();
-            foreach (Process p in stop.Invoke<Process>())
-            {
-            }
-
-            string message = StringUtil.Format(ProcessResources.StartProcessTimeoutExceeded, new object[] { process.ProcessName, process.Id });
-            ErrorRecord er = new ErrorRecord(new TimeoutException(message), "StartProcessTimeoutExceeded", ErrorCategory.OperationTimeout, process);
-            ThrowTerminatingError(er);
+            return stopProcessIds.ToArray();
         }
 
         private Process Start(ProcessStartInfo startInfo)
