@@ -2176,7 +2176,7 @@ namespace Microsoft.PowerShell.Commands
         /// <summary>
         /// Gets IDs of descendent processes, started by a process
         /// On Windows this is called recursively, using WMI commands
-        /// On UNIX, this processes the files at /proc/[pid]/stat in a loop
+        /// On UNIX, this processes the files at /proc/[pid]/status in a loop
         /// </summary>
         /// <param name="processId">
         /// The parent process ID
