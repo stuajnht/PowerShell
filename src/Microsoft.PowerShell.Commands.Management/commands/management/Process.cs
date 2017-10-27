@@ -4,6 +4,7 @@ Copyright (c) Microsoft Corporation.  All rights reserved.
 
 using System;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -2042,7 +2043,10 @@ namespace Microsoft.PowerShell.Commands
                     if (!process.HasExited)
                     {
 #if UNIX
-                        process.WaitForExit();
+                        if (!process.WaitForExit(_timeout))
+                        {
+                            StopProcessOnTimeout(process);
+                        }
 #else
                         _waithandle = new ManualResetEvent(false);
 
@@ -2170,7 +2174,9 @@ namespace Microsoft.PowerShell.Commands
         }
 
         /// <summary>
-        /// Recursively gets IDs of descendent processes, started by a process
+        /// Gets IDs of descendent processes, started by a process
+        /// On Windows this is called recursively, using WMI commands
+        /// On UNIX, this processes the files at /proc/[pid]/stat in a loop
         /// </summary>
         /// <param name="processId">
         /// The parent process ID
@@ -2181,10 +2187,40 @@ namespace Microsoft.PowerShell.Commands
         private int[] GetProcessTreeIds(int processId)
         {
             List<int> stopProcessIds = new List<int> {processId};
-            int childId;
 #if UNIX
-            // TODO: Get parent processes from /proc/<id>/stat
+            // processList - key: process ID, value: parent process ID
+            Dictionary<int, int> processList = new Dictionary<int, int>();
+            string [] procDirectories = Directory.GetDirectories("/proc/");
+            foreach (string pidDirectory in procDirectories)
+            {
+                Regex pidPath = new Regex(@"\/proc\/[0-9]+");
+                if (pidPath.IsMatch(pidDirectory))
+                {
+                    // 'status' is used over 'stat' as it contains line identifiers,
+                    // which can be searched for
+                    string[] statusFile = File.ReadAllLines(pidDirectory + "/status");
+                    int pid = 0;
+                    int ppid = 0;
+                    foreach (string status in statusFile)
+                    {
+                        string pidLine = @"^(Pid:\s)([0-9]+)";
+                        MatchCollection pidMatches = Regex.Matches(status, pidLine);
+                        foreach (Match pidMatch in pidMatches)
+                        {
+                            pid = int.Parse(pidMatch.Groups[2].Value);
+                        }
+                        string ppidLine = @"^(PPid:\s)([0-9]+)";
+                        MatchCollection ppidMatches = Regex.Matches(status, ppidLine);
+                        foreach (Match ppidMatch in ppidMatches)
+                        {
+                            ppid = int.Parse(ppidMatch.Groups[2].Value);
+                        }
+                    }
+                    processList.Add(pid, ppid);
+                }
+            }
 #else
+            int childId;
             string searchQuery = "Select ProcessID From Win32_Process Where ParentProcessId=" + processId;
             using (CimSession cimSession = CimSession.Create(null))
             {
