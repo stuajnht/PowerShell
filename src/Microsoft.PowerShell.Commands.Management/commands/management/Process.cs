@@ -2212,27 +2212,19 @@ namespace Microsoft.PowerShell.Commands
                 processList.Add(pid, ppid);
             }
 
-            int stopProcessIdsPosition = 0;
-            bool treeWalked = false;
+            int position = 0;
             do
             {
-                foreach (KeyValuePair<int, int> processes in processList)
+                foreach (KeyValuePair<int, int> process in processList)
                 {
-                    if (processes.Value == stopProcessIds[stopProcessIdsPosition])
+                    if (process.Value == stopProcessIds[position])
                     {
-                        stopProcessIds.Add(processes.Key);
+                        stopProcessIds.Add(process.Key);
                     }
                 }
 
-                if (stopProcessIdsPosition >= (stopProcessIds.Count - 1))
-                {
-                    treeWalked = true;
-                }
-                else
-                {
-                    stopProcessIdsPosition += 1;
-                }
-            } while (!treeWalked);
+                position++;
+            } while (position >= (stopProcessIds.Count - 1));
 #else
             int childId;
             string searchQuery = "Select ProcessID From Win32_Process Where ParentProcessId=" + processId;
