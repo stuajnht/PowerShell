@@ -2176,7 +2176,7 @@ namespace Microsoft.PowerShell.Commands
         /// <summary>
         /// Gets IDs of descendent processes, started by a process
         /// On Windows this is called recursively, using WMI commands
-        /// On UNIX, this processes the files at /proc/[pid]/status in a loop
+        /// On UNIX, this reads output from `ps axo pid,ppid --no-headers`
         /// </summary>
         /// <param name="processId">
         /// The parent process ID
@@ -2188,36 +2188,28 @@ namespace Microsoft.PowerShell.Commands
         {
             List<int> stopProcessIds = new List<int> {processId};
 #if UNIX
+            Process ps = new Process();
+            ps.StartInfo.FileName = "ps";
+            ps.StartInfo.Arguments = "axo pid,ppid --no-headers";
+            ps.StartInfo.UseShellExecute = false;
+            ps.StartInfo.RedirectStandardOutput = true;
+            ps.Start();
+
+            string psOutput = ps.StandardOutput.ReadToEnd();
+
+            ps.WaitForExit();
+            ps.Close();
+
             // processList - key: process ID, value: parent process ID
             Dictionary<int, int> processList = new Dictionary<int, int>();
-            string [] procDirectories = Directory.GetDirectories("/proc/");
-            foreach (string pidDirectory in procDirectories)
+            int pid = 0;
+            int ppid = 0;
+            string psPattern = @"\s?([0-9]+)\s+([0-9]+)";
+            foreach (Match psLine in Regex.Matches(psOutput, psPattern))
             {
-                Regex pidPath = new Regex(@"\/proc\/[0-9]+");
-                if (pidPath.IsMatch(pidDirectory))
-                {
-                    // 'status' is used over 'stat' as it contains line identifiers,
-                    // which can be searched for
-                    string[] statusFile = File.ReadAllLines(pidDirectory + "/status");
-                    int pid = 0;
-                    int ppid = 0;
-                    foreach (string status in statusFile)
-                    {
-                        string pidLine = @"^(Pid:\s)([0-9]+)";
-                        MatchCollection pidMatches = Regex.Matches(status, pidLine);
-                        foreach (Match pidMatch in pidMatches)
-                        {
-                            pid = int.Parse(pidMatch.Groups[2].Value);
-                        }
-                        string ppidLine = @"^(PPid:\s)([0-9]+)";
-                        MatchCollection ppidMatches = Regex.Matches(status, ppidLine);
-                        foreach (Match ppidMatch in ppidMatches)
-                        {
-                            ppid = int.Parse(ppidMatch.Groups[2].Value);
-                        }
-                    }
-                    processList.Add(pid, ppid);
-                }
+                pid = int.Parse(psLine.Groups[1].Value);
+                ppid = int.Parse(psLine.Groups[2].Value);
+                processList.Add(pid, ppid);
             }
 
             int stopProcessIdsPosition = 0;
