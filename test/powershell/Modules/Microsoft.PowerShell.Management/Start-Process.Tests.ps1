@@ -116,6 +116,30 @@ Describe "Start-Process" -Tags @("Feature") {
    }
 }
 
+Describe "Start-Process -Timeout" -Tags "Feature","Slow" {
+
+    BeforeAll {
+        if ($IsWindows) {
+            $pingParam = "-n 30 localhost"
+        }
+        elseif ($IsLinux -Or $IsMacOS) {
+            $pingParam = "-c 30 localhost"
+        }
+    }
+
+    It "Should work correctly if process completes before specified time-out" {
+        Start-Process ping -ArgumentList $pingParam -Timeout 40 | Should Be $null
+    }
+
+    It "Should give an error when the specified time-out is exceeded" {
+        { Start-Process ping -ArgumentList $pingParam -Timeout 20 } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
+    }
+
+    It "Should use time-out value when both -Timeout and -Wait are passed" {
+        { Start-Process ping -ArgumentList $pingParam -Timeout 20 -Wait } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
+    }
+}
+
 Describe "Start-Process tests requiring admin" -Tags "Feature","RequireAdminOnWindows" {
 
     BeforeEach {
