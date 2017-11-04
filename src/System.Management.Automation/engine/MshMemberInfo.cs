@@ -1,5 +1,5 @@
 /********************************************************************++
-Copyright (c) Microsoft Corporation.  All rights reserved.
+Copyright (c) Microsoft Corporation. All rights reserved.
 --********************************************************************/
 
 using System.Linq;
@@ -1782,7 +1782,7 @@ namespace System.Management.Automation
         {
             get
             {
-                return this.SetterScript != null;
+                return this._setterScript != null || this._setterScriptText != null;
             }
         }
 
@@ -1793,7 +1793,7 @@ namespace System.Management.Automation
         {
             get
             {
-                return this.GetterScript != null;
+                return this._getterScript != null || this._getterScriptText != null;
             }
         }
 

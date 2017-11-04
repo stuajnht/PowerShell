@@ -1,5 +1,5 @@
 /********************************************************************++
-Copyright (c) Microsoft Corporation.  All rights reserved.
+Copyright (c) Microsoft Corporation. All rights reserved.
 --********************************************************************/
 
 using System.Collections;
@@ -65,6 +65,8 @@ namespace System.Management.Automation.Language
             typeof(CharOps).GetMethod(nameof(CharOps.CompareStringIeq), staticFlags);
         internal static readonly MethodInfo CharOps_CompareStringIne =
             typeof(CharOps).GetMethod(nameof(CharOps.CompareStringIne), staticFlags);
+        internal static readonly MethodInfo CharOps_Range =
+            typeof(CharOps).GetMethod(nameof(CharOps.Range), staticFlags);
 
         internal static readonly MethodInfo CommandParameterInternal_CreateArgument =
             typeof(CommandParameterInternal).GetMethod(nameof(CommandParameterInternal.CreateArgument), staticFlags);
@@ -3444,8 +3446,8 @@ namespace System.Management.Automation.Language
                     bool arrayIsSingleArgumentForNativeCommand = ArgumentIsNotReallyArrayIfCommandIsNative(element);
                     elementExprs[i] =
                         Expression.Call(CachedReflectionInfo.CommandParameterInternal_CreateArgument,
-                                        Expression.Constant(element.Extent),
                                         Expression.Convert(GetCommandArgumentExpression(element), typeof(object)),
+                                        Expression.Constant(element),
                                         ExpressionCache.Constant(splatted),
                                         ExpressionCache.Constant(arrayIsSingleArgumentForNativeCommand));
                 }
@@ -3552,19 +3554,19 @@ namespace System.Management.Automation.Language
                                             errorPos.EndColumnNumber != arg.Extent.StartColumnNumber);
                 bool arrayIsSingleArgumentForNativeCommand = ArgumentIsNotReallyArrayIfCommandIsNative(arg);
                 return Expression.Call(CachedReflectionInfo.CommandParameterInternal_CreateParameterWithArgument,
-                                       Expression.Constant(errorPos),
+                                       Expression.Constant(commandParameterAst),
                                        Expression.Constant(commandParameterAst.ParameterName),
                                        Expression.Constant(errorPos.Text),
-                                       Expression.Constant(arg.Extent),
+                                       Expression.Constant(arg),
                                        Expression.Convert(GetCommandArgumentExpression(arg), typeof(object)),
                                        ExpressionCache.Constant(spaceAfterParameter),
                                        ExpressionCache.Constant(arrayIsSingleArgumentForNativeCommand));
             }
 
             return Expression.Call(CachedReflectionInfo.CommandParameterInternal_CreateParameter,
-                                   Expression.Constant(errorPos),
                                    Expression.Constant(commandParameterAst.ParameterName),
-                                   Expression.Constant(errorPos.Text));
+                                   Expression.Constant(errorPos.Text),
+                                   Expression.Constant(commandParameterAst));
         }
 
         internal static Expression ThrowRuntimeError(string errorID, string resourceString, params Expression[] exceptionArgs)
@@ -4901,6 +4903,11 @@ namespace System.Management.Automation.Language
                     return Expression.Call(CachedReflectionInfo.TypeOps_AsOperator, lhs.Cast(typeof(object)), rhs.Convert(typeof(Type)));
 
                 case TokenKind.DotDot:
+                    if(lhs.Type == typeof(string)){
+                        return Expression.Call(CachedReflectionInfo.CharOps_Range,
+                                               lhs.Convert(typeof(char)),
+                                               rhs.Convert(typeof(char)));
+                    }
                     return Expression.Call(CachedReflectionInfo.IntOps_Range,
                                            lhs.Convert(typeof(int)),
                                            rhs.Convert(typeof(int)));

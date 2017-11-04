@@ -1,5 +1,5 @@
 /********************************************************************++
-Copyright (c) Microsoft Corporation.  All rights reserved.
+Copyright (c) Microsoft Corporation. All rights reserved.
 --********************************************************************/
 
 using System.Collections;
@@ -546,8 +546,6 @@ namespace System.Management.Automation
         internal Dictionary<string, ScriptBlock> CustomArgumentCompleters { get; set; }
         internal Dictionary<string, ScriptBlock> NativeArgumentCompleters { get; set; }
 
-        private CommandFactory _commandFactory;
-
         /// <summary>
         /// Routine to create a command(processor) instance using the factory.
         /// </summary>
@@ -556,15 +554,14 @@ namespace System.Management.Automation
         /// <returns>The command processor object</returns>
         internal CommandProcessorBase CreateCommand(string command, bool dotSource)
         {
-            if (_commandFactory == null)
-            {
-                _commandFactory = new CommandFactory(this);
-            }
-            CommandProcessorBase commandProcessor = _commandFactory.CreateCommand(command,
-                this.EngineSessionState.CurrentScope.ScopeOrigin, !dotSource);
+            CommandOrigin commandOrigin = this.EngineSessionState.CurrentScope.ScopeOrigin;
+            CommandProcessorBase commandProcessor =
+                CommandDiscovery.LookupCommandProcessor(command, commandOrigin, !dotSource);
             // Reset the command origin for script commands... //BUGBUG - dotting can get around command origin checks???
             if (commandProcessor != null && commandProcessor is ScriptCommandProcessorBase)
+            {
                 commandProcessor.Command.CommandOriginInternal = CommandOrigin.Internal;
+            }
 
             return commandProcessor;
         }
@@ -1061,7 +1058,7 @@ namespace System.Management.Automation
         internal void RunspaceClosingNotification()
         {
             EngineSessionState.RunspaceClosingNotification();
-            
+
             if (_debugger != null)
             {
                 _debugger.Dispose();
@@ -1139,7 +1136,7 @@ namespace System.Management.Automation
                 }
                 return _formatDBManager;
             }
-            
+
             set
             {
                 _formatDBManager = value;
@@ -1196,21 +1193,19 @@ namespace System.Management.Automation
             }
         }
 
-
         [SuppressMessage("Microsoft.Reliability", "CA2001:AvoidCallingProblematicMethods", MessageId = "System.Reflection.Assembly.LoadWithPartialName")]
         [SuppressMessage("Microsoft.Reliability", "CA2001:AvoidCallingProblematicMethods", MessageId = "System.Reflection.Assembly.LoadFrom")]
         internal static Assembly LoadAssembly(string name, string filename, out Exception error)
         {
             // First we try to load the assembly based on the filename
-
             Assembly loadedAssembly = null;
             error = null;
-
             if (!String.IsNullOrEmpty(filename))
             {
                 try
                 {
                     loadedAssembly = Assembly.LoadFrom(filename);
+                    return loadedAssembly;
                 }
                 catch (FileNotFoundException fileNotFound)
                 {
@@ -1219,17 +1214,22 @@ namespace System.Management.Automation
                 catch (FileLoadException fileLoadException)
                 {
                     error = fileLoadException;
+                    return null;
                 }
                 catch (BadImageFormatException badImage)
                 {
                     error = badImage;
+                    return null;
                 }
                 catch (SecurityException securityException)
                 {
                     error = securityException;
+                    return null;
                 }
             }
-            else if (!String.IsNullOrEmpty(name))
+
+            // Then we try to load the assembly based on the given name
+            if (!String.IsNullOrEmpty(name))
             {
                 string fixedName = null;
                 // Remove the '.dll' if it's there...
@@ -1252,8 +1252,6 @@ namespace System.Management.Automation
                 catch (FileLoadException fileLoadException)
                 {
                     error = fileLoadException;
-                    // this is a legitimate error on CoreCLR for a newly emited with Add-Type assemblies
-                    // they cannot be loaded by name, but we are only interested in importing them by path
                 }
                 catch (BadImageFormatException badImage)
                 {
@@ -1265,7 +1263,11 @@ namespace System.Management.Automation
                 }
             }
 
-            // We either return the loaded Assembly, or return null.
+            // If the assembly is loaded, we ignore error as it may come from the filepath loading.        
+            if (loadedAssembly != null)
+            {
+                error = null;
+            }
             return loadedAssembly;
         }
 

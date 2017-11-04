@@ -1,6 +1,8 @@
 param(
-    [switch]$Bootstrap
+    [ValidateSet('Bootstrap','Build','Failure','Success')]
+    [String]$Stage = 'Build'
 )
+
 Import-Module $PSScriptRoot/../build.psm1 -Force
 Import-Module $PSScriptRoot/packaging -Force
 
@@ -15,6 +17,7 @@ function Send-DailyWebHook
     # Varible should be set in Travis-CI.org settings
     if ($env:WebHookUrl)
     {
+        log "Sending DailyWebHook with result '$result'."
         $webhook = $env:WebHookUrl
         
         $Body = @{
@@ -157,36 +160,24 @@ $isDailyBuild = $env:TRAVIS_EVENT_TYPE -eq 'cron' -or $env:TRAVIS_EVENT_TYPE -eq
 $cronBuild = $env:TRAVIS_EVENT_TYPE -eq 'cron'
 $isFullBuild = $isDailyBuild -or $hasFeatureTag
 
-if($Bootstrap.IsPresent)
+if($Stage -eq 'Bootstrap')
 {
     Write-Host -Foreground Green "Executing travis.ps1 -BootStrap `$isPR='$isPr' - $commitMessage"
     # Make sure we have all the tags
     Sync-PSTags -AddRemoteIfMissing
     Start-PSBootstrap -Package:(-not $isPr)
 }
-else 
+elseif($Stage -eq 'Build')
 {
     $BaseVersion = (Get-PSVersion -OmitCommitId) + '-'
     Write-Host -Foreground Green "Executing travis.ps1 `$isPR='$isPr' `$isFullBuild='$isFullBuild' - $commitMessage"
     $output = Split-Path -Parent (Get-PSOutput -Options (New-PSOptions))
 
-    # CrossGen'ed assemblies cause a hang to happen intermittently when running powershell class
-    # basic parsing tests in Linux/macOS. The hang seems to happen when generating dynamic assemblies.
-    # This issue has been reported to CoreCLR team. We need to work around it for now because
-    # the Travis CI build failures caused by this is draining our builder resource and severely
-    # affect our daily work. The workaround is:
-    #  1. For pull request and push commit, build without '-CrossGen' and run the parsing tests
-    #  2. For nightly build, build with '-CrossGen' but don't run the parsing tests
-    # With this workaround, CI builds triggered by pull request and push commit will exercise
-    # the parsing tests with IL assemblies, while nightly builds will exercise CrossGen'ed assemblies
-    # without running those class parsing tests so as to avoid the hang.
-    # NOTE: this change should be reverted once the 'CrossGen' issue is fixed by CoreCLR. The issue
-    #       is tracked by https://github.com/dotnet/coreclr/issues/9745
     $originalProgressPreference = $ProgressPreference
     $ProgressPreference = 'SilentlyContinue' 
     try {
         ## We use CrossGen build to run tests only if it's the daily build.
-        Start-PSBuild -CrossGen:$isDailyBuild -PSModuleRestore
+        Start-PSBuild -CrossGen -PSModuleRestore
     }
     finally{
         $ProgressPreference = $originalProgressPreference    
@@ -230,11 +221,18 @@ else
         $result = "FAIL"
     }
 
+    try {
+        Start-PSxUnit        
+    }
+    catch {
+        $result = "FAIL"
+        if (!$resultError)
+        {
+            $resultError = $_
+        }
+    }
+
     if (-not $isPr) {
-        # Run 'CrossGen' for push commit, so that we can generate package.
-        # It won't rebuild powershell, but only CrossGen the already built assemblies.
-        if (-not $isDailyBuild) { Start-PSBuild -CrossGen }
-        
         $packageParams = @{}
         if($env:TRAVIS_BUILD_NUMBER)
         {
@@ -257,35 +255,46 @@ else
                 Start-NativeExecution -sb {dotnet nuget push $package --api-key $env:NUGET_KEY --source "$env:NUGET_URL/api/v2/package"} -IgnoreExitcode
             }            
         }
-
-        # update the badge if you've done a cron build, these are not fatal issues
-        if ( $cronBuild ) {
-            try {
-                $svgData = Get-DailyBadge -result $result
-                if ( ! $svgData ) {
-                    write-warning "Could not retrieve $result badge"
-                }
-                else {
-                    Write-Verbose -verbose "Setting status badge to '$result'"
-                    Set-DailyBuildBadge -content $svgData
-                }
-            }
-            catch {
-                Write-Warning "Could not update status badge: $_"
-            }
-            try {
-                Send-DailyWebHook -result $result
-            }
-            catch {
-                Write-Warning "Could not send webhook: $_"
-            }
-        }
     }
 
     # if the tests did not pass, throw the reason why
     if ( $result -eq "FAIL" ) {
         Throw $resultError
     }
+}
+elseif($Stage -in 'Failure', 'Success')
+{
+    $result = 'PASS'
+    if($Stage -eq 'Failure')
+    {
+        $result = 'FAIL'
+    }
 
-    Start-PSxUnit
+    if ($cronBuild) {
+        # update the badge if you've done a cron build, these are not fatal issues
+        try {
+            $svgData = Get-DailyBadge -result $result
+            if ( ! $svgData ) {
+                write-warning "Could not retrieve $result badge"
+            }
+            else {
+                log "Setting status badge to '$result'"
+                Set-DailyBuildBadge -content $svgData
+            }
+        }
+        catch {
+            Write-Warning "Could not update status badge: $_"
+        }
+
+        try {
+            Send-DailyWebHook -result $result
+        }
+        catch {
+            Write-Warning "Could not send webhook: $_"
+        }
+    }
+    else {
+        log 'We only send bagde or webhook update for Cron builds'
+    }
+
 }

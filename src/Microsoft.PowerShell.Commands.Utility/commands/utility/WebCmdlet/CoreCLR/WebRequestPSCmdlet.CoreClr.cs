@@ -1,7 +1,7 @@
 ﻿#if CORECLR
 
 /********************************************************************++
-Copyright (c) Microsoft Corporation.  All rights reserved.
+Copyright (c) Microsoft Corporation. All rights reserved.
 --********************************************************************/
 
 using System;
@@ -287,9 +287,9 @@ namespace Microsoft.PowerShell.Commands
                 }
                 else
                 {
-                    request.Headers.Add(HttpKnownHeaderNames.UserAgent, WebSession.UserAgent);    
+                    request.Headers.Add(HttpKnownHeaderNames.UserAgent, WebSession.UserAgent);
                 }
-                
+
             }
 
             // Set 'Keep-Alive' to false. This means set the Connection to 'Close'.
@@ -847,17 +847,20 @@ namespace Microsoft.PowerShell.Commands
             IEnumerable<string> links;
             if (response.Headers.TryGetValues("Link", out links))
             {
-                foreach(string link in links.FirstOrDefault().Split(","))
+                foreach (string linkHeader in links)
                 {
-                    Match match = Regex.Match(link, pattern);
-                    if (match.Success)
+                    foreach (string link in linkHeader.Split(","))
                     {
-                        string url = match.Groups["url"].Value;
-                        string rel = match.Groups["rel"].Value;
-                        if (url != String.Empty && rel != String.Empty && !_relationLink.ContainsKey(rel))
+                        Match match = Regex.Match(link, pattern);
+                        if (match.Success)
                         {
-                            Uri absoluteUri = new Uri(requestUri, url);
-                            _relationLink.Add(rel, absoluteUri.AbsoluteUri.ToString());
+                            string url = match.Groups["url"].Value;
+                            string rel = match.Groups["rel"].Value;
+                            if (url != String.Empty && rel != String.Empty && !_relationLink.ContainsKey(rel))
+                            {
+                                Uri absoluteUri = new Uri(requestUri, url);
+                                _relationLink.Add(rel, absoluteUri.AbsoluteUri.ToString());
+                            }
                         }
                     }
                 }

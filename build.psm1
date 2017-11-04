@@ -3,7 +3,7 @@
 $script:TestModulePathSeparator = [System.IO.Path]::PathSeparator
 
 $dotnetCLIChannel = "release"
-$dotnetCLIRequiredVersion = "2.0.0"
+$dotnetCLIRequiredVersion = "2.0.2"
 
 # Track if tags have been sync'ed
 $tagsUpToDate = $false
@@ -257,10 +257,6 @@ cmd.exe /C cd /d "$location" "&" "$($vcPath)\vcvarsall.bat" "$Arch" "&" cmake "$
             log "  Copying $srcPath to $dstPath"
             Copy-Item $srcPath $dstPath
         }
-
-        # Place the remoting configuration script in the same directory
-        # as the binary so it will get published.
-        Copy-Item .\Install-PowerShellRemoting.ps1 $dstPath
     } finally {
         Pop-Location
     }
@@ -372,7 +368,7 @@ function Start-PSBuild {
     }
 
     function Stop-DevPowerShell {
-        Get-Process powershell* |
+        Get-Process pwsh* |
             Where-Object {
                 $_.Modules |
                 Where-Object {
@@ -438,6 +434,7 @@ Fix steps:
         Configuration=$Configuration
         Verbose=$true
         SMAOnly=[bool]$SMAOnly
+        PSModuleRestore=$PSModuleRestore
     }
     $script:Options = New-PSOptions @OptionsArguments
 
@@ -602,7 +599,9 @@ function New-PSOptions {
 
         [string]$Output,
 
-        [switch]$SMAOnly
+        [switch]$SMAOnly,
+        
+        [switch]$PSModuleRestore
     )
 
     # Add .NET CLI tools to PATH
@@ -716,7 +715,8 @@ function New-PSOptions {
               Framework = $Framework;
               Runtime = $Runtime;
               Output = $Output;
-              CrossGen = $CrossGen }
+              CrossGen = $CrossGen
+              PSModuleRestore = $PSModuleRestore }
 }
 
 # Get the Options of the last build
@@ -1442,6 +1442,15 @@ function Start-PSBootstrap {
 
         # Install Windows dependencies if `-Package` or `-BuildWindowsNative` is specified
         if ($Environment.IsWindows) {
+            ## need RCEdit to modify the binaries embedded resources
+            if (-not (Test-Path "~/.rcedit/rcedit-x64.exe"))
+            {
+                log "Install RCEdit for modifying exe resources"
+                $rceditUrl = "https://github.com/electron/rcedit/releases/download/v1.0.0/rcedit-x64.exe"
+                New-Item -Path "~/.rcedit" -Type Directory -Force > $null
+                Invoke-WebRequest -OutFile "~/.rcedit/rcedit-x64.exe" -Uri $rceditUrl
+            }
+
             if ($BuildWindowsNative) {
                 log "Install Windows dependencies for building PSRP plugin"
 
@@ -1597,7 +1606,7 @@ function Start-DevPowerShell {
 
         # splatting for the win
         $startProcessArgs = @{
-            FilePath = "$binDir\powershell"
+            FilePath = "$binDir\pwsh"
             ArgumentList = "$ArgumentList"
         }
 
@@ -1861,6 +1870,16 @@ function New-MSIPackage
         # Force overwrite of package
         [Switch] $Force
     )
+
+    ## need RCEdit to modify the binaries embedded resources
+    if (-not (Test-Path "~/.rcedit/rcedit-x64.exe"))
+    {
+        throw "RCEdit is required to modify pwsh.exe resources, please run 'Start-PSBootStrap' to install"
+    }
+
+    Start-NativeExecution { & "~/.rcedit/rcedit-x64.exe" (Get-PSOutput) --set-icon "$AssetsPath\Powershell_black.ico" `
+        --set-file-version $ProductVersion --set-product-version $ProductVersion --set-version-string "ProductName" "PowerShell Core 6" `
+        --set-requested-execution-level "asInvoker" --set-version-string "LegalCopyright" "(C) Microsoft Corporation.  All Rights Reserved." } | Write-Verbose
 
     ## AppVeyor base image might update the version for Wix. Hence, we should
     ## not hard code version numbers.

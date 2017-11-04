@@ -1,5 +1,5 @@
 ﻿#
-# Copyright (c) Microsoft Corporation, 2016
+# Copyright (c) Microsoft Corporation. All rights reserved.
 #
 # This is a Pester test suite which validate the Web cmdlets.
 #
@@ -455,7 +455,7 @@ Describe "Invoke-WebRequest tests" -Tags "Feature" {
 
     #User-Agent changes on different platforms, so tests should only be run if on the correct platform
     It "Invoke-WebRequest returns Correct User-Agent on MacOSX" -Skip:(!$IsMacOS) {
-        
+
         $uri = Get-WebListenerUrl -Test 'Get'
         $command = "Invoke-WebRequest -Uri '$uri' -TimeoutSec 5"
 
@@ -468,7 +468,7 @@ Describe "Invoke-WebRequest tests" -Tags "Feature" {
     }
 
     It "Invoke-WebRequest returns Correct User-Agent on Linux" -Skip:(!$IsLinux) {
-        
+
         $uri = Get-WebListenerUrl -Test 'Get'
         $command = "Invoke-WebRequest -Uri '$uri' -TimeoutSec 5"
 
@@ -633,7 +633,7 @@ Describe "Invoke-WebRequest tests" -Tags "Feature" {
 
         # Validate response content
         $result.Output.Headers.'Content-Encoding'[0] | Should BeExactly $dataEncoding
-        $jsonContent = $result.Output.Content | ConvertFrom-Json        
+        $jsonContent = $result.Output.Content | ConvertFrom-Json
         $jsonContent.Headers.Host | Should BeExactly $uri.Authority
     }
 
@@ -799,6 +799,24 @@ Describe "Invoke-WebRequest tests" -Tags "Feature" {
         $command = "Invoke-WebRequest -Uri 'http://localhost:8080/PowerShell?test=linkheader&maxlinks=5'"
         $result = ExecuteWebCommand -command $command
         $result.Output.RelationLink.Count | Should BeExactly 2
+        $result.Output.RelationLink["next"] | Should BeExactly "http://localhost:8080/PowerShell?test=linkheader&maxlinks=5&linknumber=2"
+        $result.Output.RelationLink["last"] | Should BeExactly "http://localhost:8080/PowerShell?test=linkheader&maxlinks=5&linknumber=5"
+    }
+
+    # Test pending support for multiple header capable server on Linux/macOS see issue #4639
+    It "Validate Invoke-WebRequest returns valid RelationLink property with absolute uris if Multiple Link Headers are present" -Pending:$(!$IsWindows){
+        $headers = @{
+            Link =
+                '<http://localhost:8080/PowerShell?test=linkheader&maxlinks=5&linknumber=1>; rel="self"',
+                '<http://localhost:8080/PowerShell?test=linkheader&maxlinks=5&linknumber=2>; rel="next"',
+                '<http://localhost:8080/PowerShell?test=linkheader&maxlinks=5&linknumber=5>; rel="last"'
+        } | ConvertTo-Json -Compress
+        $headers = [uri]::EscapeDataString($headers)
+        $uri = "http://localhost:8080/PowerShell?test=response&contenttype=text/plain&output=OK&headers=$headers"
+        $command = "Invoke-WebRequest -Uri '$uri'"
+        $result = ExecuteWebCommand -command $command
+        $result.Output.RelationLink.Count | Should BeExactly 3
+        $result.Output.RelationLink["self"] | Should BeExactly "http://localhost:8080/PowerShell?test=linkheader&maxlinks=5&linknumber=1"
         $result.Output.RelationLink["next"] | Should BeExactly "http://localhost:8080/PowerShell?test=linkheader&maxlinks=5&linknumber=2"
         $result.Output.RelationLink["last"] | Should BeExactly "http://localhost:8080/PowerShell?test=linkheader&maxlinks=5&linknumber=5"
     }
@@ -1317,7 +1335,7 @@ Describe "Invoke-WebRequest tests" -Tags "Feature" {
             param($Authentication)
             $params = @{
                 Uri = $httpsUri
-                Authentication = $Authentication 
+                Authentication = $Authentication
                 Token = $token
                 SkipCertificateCheck = $true
             }
@@ -1437,7 +1455,7 @@ Describe "Invoke-RestMethod tests" -Tags "Feature" {
 
     #User-Agent changes on different platforms, so tests should only be run if on the correct platform
     It "Invoke-RestMethod returns Correct User-Agent on MacOSX" -Skip:(!$IsMacOS) {
-        
+
         $uri = Get-WebListenerUrl -Test 'Get'
         $command = "Invoke-RestMethod -Uri '$uri' -TimeoutSec 5"
 
@@ -1448,7 +1466,7 @@ Describe "Invoke-RestMethod tests" -Tags "Feature" {
     }
 
     It "Invoke-RestMethod returns Correct User-Agent on Linux" -Skip:(!$IsLinux) {
-        
+
         $uri = Get-WebListenerUrl -Test 'Get'
         $command = "Invoke-RestMethod -Uri '$uri' -TimeoutSec 5"
 
@@ -1596,7 +1614,7 @@ Describe "Invoke-RestMethod tests" -Tags "Feature" {
         $result = Invoke-RestMethod -Uri $uri -ResponseHeadersVariable 'headers'
 
         # Validate response content
-        $headers.'Content-Encoding'[0] | Should BeExactly $dataEncoding      
+        $headers.'Content-Encoding'[0] | Should BeExactly $dataEncoding
         $result.Headers.Host | Should BeExactly $uri.Authority
     }
 
@@ -2237,7 +2255,7 @@ Describe "Invoke-RestMethod tests" -Tags "Feature" {
             param($Authentication)
             $params = @{
                 Uri = $httpsUri
-                Authentication = $Authentication 
+                Authentication = $Authentication
                 Token = $token
                 SkipCertificateCheck = $true
             }

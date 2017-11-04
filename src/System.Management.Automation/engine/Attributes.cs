@@ -1,5 +1,5 @@
 /********************************************************************++
-Copyright (c) Microsoft Corporation.  All rights reserved.
+Copyright (c) Microsoft Corporation. All rights reserved.
 --********************************************************************/
 
 using System.Collections;
@@ -560,6 +560,10 @@ namespace System.Management.Automation
     [AttributeUsage(AttributeTargets.Assembly)]
     public class DynamicClassImplementationAssemblyAttribute : Attribute
     {
+        /// <summary>
+        /// The (possibly null) path to the file defining this class.
+        /// </summary>
+        public string ScriptFile { get; set; }
     }
 
     #endregion Misc Attributes

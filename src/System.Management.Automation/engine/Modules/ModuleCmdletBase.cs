@@ -1,5 +1,5 @@
 /********************************************************************++
-Copyright (c) Microsoft Corporation.  All rights reserved.
+Copyright (c) Microsoft Corporation. All rights reserved.
 --********************************************************************/
 
 using System;
@@ -317,11 +317,11 @@ namespace Microsoft.PowerShell.Commands
 
                             module = LoadUsingExtensions(parentModule, name, qualifiedPath, extension, null, this.BasePrefix, ss, options, manifestProcessingFlags, out found);
                         }
+                        if (found)
+                        {
+                            break;
+                        }
 #if UNIX
-                    }
-                    if (found)
-                    {
-                        break;
                     }
                 }
                 if (found)

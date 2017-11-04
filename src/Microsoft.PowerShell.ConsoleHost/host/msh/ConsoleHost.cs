@@ -1,5 +1,5 @@
 /********************************************************************++
-Copyright (c) Microsoft Corporation.  All rights reserved.
+Copyright (c) Microsoft Corporation. All rights reserved.
 --********************************************************************/
 #pragma warning disable 1634, 1691
 
@@ -2222,7 +2222,7 @@ namespace Microsoft.PowerShell
         /// </summary>
         private void WriteDebuggerMessage(string line)
         {
-            this.ui.WriteWrappedLine(this.ui.DebugForegroundColor, this.ui.DebugBackgroundColor, line);
+            this.ui.WriteLine(this.ui.DebugForegroundColor, this.ui.DebugBackgroundColor, line);
         }
 
         #endregion debugger
@@ -2434,7 +2434,7 @@ namespace Microsoft.PowerShell
                             continue;
                         }
 
-                        if (line.Trim().Length == 0)
+                        if (string.IsNullOrWhiteSpace(line))
                         {
                             if (inBlockMode)
                             {

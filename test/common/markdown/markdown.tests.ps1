@@ -74,7 +74,8 @@ Describe 'Common Tests - Validate Markdown Files' -Tag 'CI' {
             $docsToTest = @(
                 './*.md'
                 './docs/*.md'
-                './docs/cmdlet-example/command-line-simple-example.md'
+                './docs/building/*.md'
+                './docs/cmdlet-example/*.md'
                 './docs/installation/*.md'
                 './docs/maintainers/README.md'
                 './demos/SSHRemoting/*.md'

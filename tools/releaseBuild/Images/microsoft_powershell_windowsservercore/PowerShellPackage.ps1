@@ -52,17 +52,22 @@ try{
     Import-Module "$location\build.psm1" -Force
     Import-Module "$location\tools\packaging" -Force
     $env:platform = $null
+
+    Write-Verbose "Sync'ing Tags..." -verbose
+    Sync-PSTags -AddRemoteIfMissing
+
     Write-Verbose "Bootstrapping powershell build..." -verbose
     Start-PSBootstrap -Force -Package
 
     Write-Verbose "Starting powershell build for RID: $Runtime and ReleaseTag: $ReleaseTag ..." -verbose
     $buildParams = @{}
+    $buildParams['CrossGen'] = $true
     if(!$Symbols.IsPresent)
     {
-        $buildParams['CrossGen'] = $true
+        $buildParams['PSModuleRestore'] = $true
     }
 
-    Start-PSBuild -Clean -PSModuleRestore -Runtime $Runtime -Configuration Release @releaseTagParam @buildParams
+    Start-PSBuild -Clean -Runtime $Runtime -Configuration Release @releaseTagParam @buildParams
 
     $pspackageParams = @{'Type'='msi'}
     if ($Runtime -ne 'win10-x64')

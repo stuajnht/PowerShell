@@ -77,7 +77,7 @@ In addition you will need to enable password authentication and optionally key b
     ```
     - Add a PowerShell subsystem entry
     ```none
-    Subsystem powershell /usr/bin/powershell -sshs -NoLogo -NoProfile
+    Subsystem powershell /usr/bin/pwsh -sshs -NoLogo -NoProfile
     ```
     - Optionally enable key authentication
     ```none
@@ -175,7 +175,7 @@ Microsoft Windows [Version 10.0.10586]
 #
 C:\Users\PSUser\Documents>pwsh.exe
 PowerShell
-Copyright (C) Microsoft Corporation. All rights reserved.
+Copyright (c) Microsoft Corporation. All rights reserved.
 
 PS C:\Users\PSUser\Documents> $session = New-PSSession -HostName WinVM2 -UserName PSRemoteUser
 The authenticity of host 'WinVM2 (10.13.37.3)' can't be established.
