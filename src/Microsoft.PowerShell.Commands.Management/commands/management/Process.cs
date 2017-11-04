@@ -2066,7 +2066,10 @@ namespace Microsoft.PowerShell.Commands
                             // WinBlue: 27537 Start-Process -Wait doesn't work in a remote session on Windows 7 or lower.
                             process.Exited += new EventHandler(myProcess_Exited);
                             process.EnableRaisingEvents = true;
-                            process.WaitForExit();
+                            if (!process.WaitForExit(_timeout))
+                            {
+                                StopProcessOnTimeout(process);
+                            }
                         }
 #endif
                     }
