@@ -2171,7 +2171,7 @@ namespace Microsoft.PowerShell.Commands
             {
             }
 
-            string message = StringUtil.Format(ProcessResources.StartProcessTimeoutExceeded, process.ProcessName );
+            string message = StringUtil.Format(ProcessResources.StartProcessTimeoutExceeded, process.ProcessName);
             ErrorRecord er = new ErrorRecord(new TimeoutException(message), "StartProcessTimeoutExceeded", ErrorCategory.OperationTimeout, process);
             ThrowTerminatingError(er);
         }
