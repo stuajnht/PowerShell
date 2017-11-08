@@ -2178,7 +2178,7 @@ namespace Microsoft.PowerShell.Commands
 
         /// <summary>
         /// Gets IDs of descendent processes, started by a process
-        /// On Windows this is called recursively, using WMI commands
+        /// On Windows, this reads output from WMI commands
         /// On UNIX, this reads output from `ps axo pid,ppid --no-headers`
         /// </summary>
         /// <param name="processId">
@@ -2190,6 +2190,7 @@ namespace Microsoft.PowerShell.Commands
         private int[] GetProcessTreeIds(int processId)
         {
             List<int> stopProcessIds = new List<int> {processId};
+            string processRelationships = "";
 #if UNIX
             Process ps = new Process();
             ps.StartInfo.FileName = "ps";
@@ -2198,17 +2199,32 @@ namespace Microsoft.PowerShell.Commands
             ps.StartInfo.RedirectStandardOutput = true;
             ps.Start();
 
-            string psOutput = ps.StandardOutput.ReadToEnd();
+            processRelationships = ps.StandardOutput.ReadToEnd();
 
             ps.WaitForExit();
             ps.Close();
+#else
+            string searchQuery = "Select ProcessID, ParentProcessID From Win32_Process";
+            using (CimSession cimSession = CimSession.Create(null))
+            {
+                IEnumerable<CimInstance> processCollection =
+                    cimSession.QueryInstances("root/cimv2", "WQL", searchQuery);
+                foreach (CimInstance processInstance in processCollection)
+                {
+                    processRelationships += processInstance.CimInstanceProperties["ProcessID"].Value.ToString()
+                                         + " "
+                                         + processInstance.CimInstanceProperties["ParentProcessID"].Value.ToString()
+                                         + Environment.NewLine;
+                }
+            }
+#endif
 
             // processList - key: process ID, value: parent process ID
             Dictionary<int, int> processList = new Dictionary<int, int>();
             int pid = 0;
             int ppid = 0;
-            string psPattern = @"\s?([0-9]+)\s+([0-9]+)";
-            foreach (Match psLine in Regex.Matches(psOutput, psPattern))
+            string relationshipPattern = @"\s?([0-9]+)\s+([0-9]+)";
+            foreach (Match psLine in Regex.Matches(processRelationships, relationshipPattern))
             {
                 pid = int.Parse(psLine.Groups[1].Value);
                 ppid = int.Parse(psLine.Groups[2].Value);
@@ -2227,24 +2243,8 @@ namespace Microsoft.PowerShell.Commands
                 }
 
                 position++;
-            } while (position >= (stopProcessIds.Count - 1));
-#else
-            int childId;
-            string searchQuery = "Select ProcessID From Win32_Process Where ParentProcessId=" + processId;
-            using (CimSession cimSession = CimSession.Create(null))
-            {
-                IEnumerable<CimInstance> processCollection =
-                    cimSession.QueryInstances("root/cimv2", "WQL", searchQuery);
-                foreach (CimInstance processInstance in processCollection)
-                {
-                    if (int.TryParse(processInstance.CimInstanceProperties["Handle"].Value.ToString(),
-                                     out childId))
-                    {
-                        stopProcessIds.AddRange(GetProcessTreeIds(childId));
-                    }
-                }
-            }
-#endif
+            } while (position <= (stopProcessIds.Count - 1));
+
             return stopProcessIds.ToArray();
         }
 
