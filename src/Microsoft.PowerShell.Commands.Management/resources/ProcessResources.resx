@@ -129,6 +129,9 @@
   <data name="CouldNotStopProcess" xml:space="preserve">
     <value>Cannot stop process "{0} ({1})" because of the following error: {2}</value>
   </data>
+  <data name="CouldNotResolveProcessTree" xml:space="preserve">
+    <value>The process tree cannot be resolved for "{0}".</value>
+  </data>
   <data name="ProcessNameForConfirmation" xml:space="preserve">
     <value>{0} ({1})</value>
   </data>

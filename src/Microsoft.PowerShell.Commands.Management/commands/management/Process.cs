@@ -2205,17 +2205,26 @@ namespace Microsoft.PowerShell.Commands
             ps.Close();
 #else
             string searchQuery = "Select ProcessID, ParentProcessID From Win32_Process";
-            using (CimSession cimSession = CimSession.Create(null))
+            try
             {
-                IEnumerable<CimInstance> processCollection =
-                    cimSession.QueryInstances("root/cimv2", "WQL", searchQuery);
-                foreach (CimInstance processInstance in processCollection)
+                using (CimSession cimSession = CimSession.Create(null))
                 {
-                    processRelationships += processInstance.CimInstanceProperties["ProcessID"].Value.ToString()
-                                         + " "
-                                         + processInstance.CimInstanceProperties["ParentProcessID"].Value.ToString()
-                                         + Environment.NewLine;
+                    IEnumerable<CimInstance> processCollection =
+                        cimSession.QueryInstances("root/cimv2", "WQL", searchQuery);
+                    foreach (CimInstance processInstance in processCollection)
+                    {
+                        processRelationships += processInstance.CimInstanceProperties["ProcessID"].Value.ToString()
+                                            + " "
+                                            + processInstance.CimInstanceProperties["ParentProcessID"].Value.ToString()
+                                            + Environment.NewLine;
+                    }
                 }
+            }
+            catch (CimException)
+            {
+                string message = StringUtil.Format(ProcessResources.CouldNotResolveProcessTree, parentProcess.ProcessName);
+                WriteWarning(message);
+                return stopProcessIds.ToArray();
             }
 #endif
 
