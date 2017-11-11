@@ -2211,13 +2211,15 @@ namespace Microsoft.PowerShell.Commands
                 {
                     IEnumerable<CimInstance> processCollection =
                         cimSession.QueryInstances("root/cimv2", "WQL", searchQuery);
+                    StringBuilder sb = new StringBuilder();
                     foreach (CimInstance processInstance in processCollection)
                     {
-                        processRelationships += processInstance.CimInstanceProperties["ProcessID"].Value.ToString()
-                                            + " "
-                                            + processInstance.CimInstanceProperties["ParentProcessID"].Value.ToString()
-                                            + Environment.NewLine;
+                        sb.Append(processInstance.CimInstanceProperties["ProcessID"].Value.ToString());
+                        sb.Append(' ');
+                        sb.Append(processInstance.CimInstanceProperties["ParentProcessID"].Value.ToString());
+                        sb.Append(Environment.NewLine);
                     }
+                    processRelationships = sb.ToString();
                 }
             }
             catch (CimException)
