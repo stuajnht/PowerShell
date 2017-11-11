@@ -2192,17 +2192,29 @@ namespace Microsoft.PowerShell.Commands
             List<int> stopProcessIds = new List<int> {parentProcess.Id};
             string processRelationships = "";
 #if UNIX
-            Process ps = new Process();
-            ps.StartInfo.FileName = "ps";
-            ps.StartInfo.Arguments = "axo pid,ppid --no-headers";
-            ps.StartInfo.UseShellExecute = false;
-            ps.StartInfo.RedirectStandardOutput = true;
-            ps.Start();
+            try
+            {
+                Process ps = new Process();
+                ps.StartInfo.FileName = "ps";
+                ps.StartInfo.Arguments = "axo pid,ppid --no-headers";
+                ps.StartInfo.UseShellExecute = false;
+                ps.StartInfo.RedirectStandardOutput = true;
+                ps.Start();
 
-            processRelationships = ps.StandardOutput.ReadToEnd();
+                processRelationships = ps.StandardOutput.ReadToEnd();
 
-            ps.WaitForExit();
-            ps.Close();
+                ps.WaitForExit();
+                ps.Close();
+            }
+            catch (Win32Exception)
+            {
+                WriteWarning(
+                    StringUtil.Format(ProcessResources.CouldNotResolveProcessTree, parentProcess.ProcessName)
+                    + " "
+                    + ProcessResources.DescendantProcessesPossiblyRunning
+                );
+                return stopProcessIds.ToArray();
+            }
 #else
             string searchQuery = "Select ProcessID, ParentProcessID From Win32_Process";
             try
