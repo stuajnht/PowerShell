@@ -2177,7 +2177,7 @@ namespace Microsoft.PowerShell.Commands
         }
 
         /// <summary>
-        /// Gets IDs of descendent processes, started by a process
+        /// Gets IDs of descendant processes, started by a process
         /// On Windows, this reads output from WMI commands
         /// On UNIX, this reads output from `ps axo pid,ppid --no-headers`
         /// </summary>
@@ -2185,7 +2185,7 @@ namespace Microsoft.PowerShell.Commands
         /// The parent process to use to resolve the process tree IDs
         /// </param>
         /// <returns>
-        /// IDs of the parent process and all its descendents
+        /// IDs of the parent process and all its descendants
         /// </returns>
         private int[] GetProcessTreeIds(Process parentProcess)
         {
@@ -2222,8 +2222,11 @@ namespace Microsoft.PowerShell.Commands
             }
             catch (CimException)
             {
-                string message = StringUtil.Format(ProcessResources.CouldNotResolveProcessTree, parentProcess.ProcessName);
-                WriteWarning(message);
+                WriteWarning(
+                    StringUtil.Format(ProcessResources.CouldNotResolveProcessTree, parentProcess.ProcessName)
+                    + " "
+                    + ProcessResources.DescendantProcessesPossiblyRunning
+                );
                 return stopProcessIds.ToArray();
             }
 #endif

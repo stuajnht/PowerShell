@@ -132,6 +132,9 @@
   <data name="CouldNotResolveProcessTree" xml:space="preserve">
     <value>The process tree cannot be resolved for "{0}".</value>
   </data>
+  <data name="DescendantProcessesPossiblyRunning" xml:space="preserve">
+    <value>Descendant processes may still be running.</value>
+  </data>
   <data name="ProcessNameForConfirmation" xml:space="preserve">
     <value>{0} ({1})</value>
   </data>
