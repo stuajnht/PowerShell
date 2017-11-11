@@ -2166,7 +2166,7 @@ namespace Microsoft.PowerShell.Commands
         private void StopProcessOnTimeout(Process process)
         {
             StopProcessCommand stop = new StopProcessCommand();
-            stop.Id = GetProcessTreeIds(process.Id);
+            stop.Id = GetProcessTreeIds(process);
             foreach (Process p in stop.Invoke<Process>())
             {
             }
@@ -2181,15 +2181,15 @@ namespace Microsoft.PowerShell.Commands
         /// On Windows, this reads output from WMI commands
         /// On UNIX, this reads output from `ps axo pid,ppid --no-headers`
         /// </summary>
-        /// <param name="processId">
-        /// The parent process ID
+        /// <param name="parentProcess">
+        /// The parent process to use to resolve the process tree IDs
         /// </param>
         /// <returns>
         /// IDs of the parent process and all its descendents
         /// </returns>
-        private int[] GetProcessTreeIds(int processId)
+        private int[] GetProcessTreeIds(Process parentProcess)
         {
-            List<int> stopProcessIds = new List<int> {processId};
+            List<int> stopProcessIds = new List<int> {parentProcess.Id};
             string processRelationships = "";
 #if UNIX
             Process ps = new Process();
