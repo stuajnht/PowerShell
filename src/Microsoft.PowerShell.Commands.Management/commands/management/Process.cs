@@ -2167,9 +2167,7 @@ namespace Microsoft.PowerShell.Commands
         {
             StopProcessCommand stop = new StopProcessCommand();
             stop.Id = GetProcessTreeIds(process);
-            foreach (Process p in stop.Invoke<Process>())
-            {
-            }
+            foreach (Process p in stop.Invoke<Process>()) {}
 
             string message = StringUtil.Format(ProcessResources.StartProcessTimeoutExceeded, process.ProcessName);
             ErrorRecord er = new ErrorRecord(new TimeoutException(message), "StartProcessTimeoutExceeded", ErrorCategory.OperationTimeout, process);
