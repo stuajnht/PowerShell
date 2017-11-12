@@ -125,10 +125,28 @@ Describe "Start-Process -Timeout" -Tags "Feature","Slow" {
         elseif ($IsLinux -Or $IsMacOS) {
             $pingParam = "-c 30 localhost"
         }
+
+        # Find where test/powershell is so we can find the testexe command relative to it
+        $powershellTestDir = $PSScriptRoot
+        while ($powershellTestDir -notmatch 'test[\\/]powershell$') {
+            $powershellTestDir = Split-Path $powershellTestDir
+        }
+        $testexe = Join-Path (Split-Path $powershellTestDir) tools/TestExe/bin/testexe
     }
 
     It "Should work correctly if process completes before specified time-out" {
         Start-Process ping -ArgumentList $pingParam -Timeout 40 | Should Be $null
+    }
+
+    # This is based on the test "Should kill native process tree" in
+    # test\powershell\Language\Scripting\NativeExecution\NativeCommandProcessor.Tests.ps1
+    It "Should stop any descendant processes when the specified time-out is exceeded" {
+        Get-Process testexe -ErrorAction SilentlyContinue | Stop-Process
+
+        { Start-Process $testexe -ArgumentList "-createchildprocess 6" -Timeout 10 } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
+
+        $childprocesses = Get-Process testexe -ErrorAction SilentlyContinue
+        $childprocesses.count | Should Be 0
     }
 
     It "Should give an error when the specified time-out is exceeded" {
