@@ -153,6 +153,10 @@ Describe "Start-Process -Timeout" -Tags "Feature","Slow" {
 
         { Start-Process $testexe -ArgumentList "-createchildprocess 6" -Timeout 10 } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
 
+        # Waiting for a second, as the $testexe processes may still be exiting
+        # and the Get-Process cmdlet will count them accidentally
+        Start-Sleep 1
+
         $childprocesses = Get-Process testexe -ErrorAction SilentlyContinue
         $childprocesses.count | Should Be 0
     }
