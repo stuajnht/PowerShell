@@ -1796,11 +1796,11 @@ namespace Microsoft.PowerShell.Commands
             set
             {
                 _timeout = value * 1000;
-                _timeOutSpecified = true;
+                _timeoutSpecified = true;
             }
         }
         private int _timeout = System.Threading.Timeout.Infinite;
-        private bool _timeOutSpecified;
+        private bool _timeoutSpecified;
 
         /// <summary>
         ///  Default Environment
@@ -2036,7 +2036,7 @@ namespace Microsoft.PowerShell.Commands
                 }
             }
 
-            if (Wait.IsPresent || _timeOutSpecified)
+            if (Wait.IsPresent || _timeoutSpecified)
             {
                 if (process != null)
                 {
