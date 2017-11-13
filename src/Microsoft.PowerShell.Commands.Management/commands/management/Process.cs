@@ -2165,12 +2165,13 @@ namespace Microsoft.PowerShell.Commands
         /// </param>
         private void StopProcessOnTimeout(Process process)
         {
-            StopProcessCommand stop = new StopProcessCommand();
-            stop.Id = GetProcessTreeIds(process);
-            foreach (Process p in stop.Invoke<Process>()) {}
-
             string message = StringUtil.Format(ProcessResources.StartProcessTimeoutExceeded, process.ProcessName);
             ErrorRecord er = new ErrorRecord(new TimeoutException(message), "StartProcessTimeoutExceeded", ErrorCategory.OperationTimeout, process);
+
+            StopProcessCommand stop = new StopProcessCommand();
+            stop.Id = GetProcessTreeIds(process);
+            foreach (Process p in stop.Invoke<Process>()) { }
+
             ThrowTerminatingError(er);
         }
 
