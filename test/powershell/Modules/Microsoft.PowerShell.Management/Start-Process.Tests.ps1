@@ -135,15 +135,15 @@ Describe "Start-Process -Timeout" -Tags "Feature","Slow" {
     }
 
     It "Should work correctly if process completes before specified time-out" {
-        Start-Process ping -ArgumentList $pingParam -Timeout 40 | Should Be $null
+        Start-Process ping -ArgumentList $pingParam -Timeout 40 -RedirectStandardOutput "$TESTDRIVE/output" | Should Be $null
     }
 
     It "Should give an error when the specified time-out is exceeded" {
-        { Start-Process ping -ArgumentList $pingParam -Timeout 20 } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
+        { Start-Process ping -ArgumentList $pingParam -Timeout 20 -RedirectStandardOutput "$TESTDRIVE/output" } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
     }
 
     It "Should use time-out value when both -Timeout and -Wait are passed" {
-        { Start-Process ping -ArgumentList $pingParam -Timeout 20 -Wait } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
+        { Start-Process ping -ArgumentList $pingParam -Timeout 20 -Wait -RedirectStandardOutput "$TESTDRIVE/output" } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
     }
 
     # This is based on the test "Should kill native process tree" in
@@ -151,7 +151,7 @@ Describe "Start-Process -Timeout" -Tags "Feature","Slow" {
     It "Should stop any descendant processes when the specified time-out is exceeded" {
         Get-Process testexe -ErrorAction SilentlyContinue | Stop-Process
 
-        { Start-Process $testexe -ArgumentList "-createchildprocess 6" -Timeout 10 } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
+        { Start-Process $testexe -ArgumentList "-createchildprocess 6" -Timeout 10 -RedirectStandardOutput "$TESTDRIVE/output" } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
 
         # Waiting for a second, as the $testexe processes may still be exiting
         # and the Get-Process cmdlet will count them accidentally
