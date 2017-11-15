@@ -2178,7 +2178,7 @@ namespace Microsoft.PowerShell.Commands
         /// <summary>
         /// Gets IDs of descendant processes, started by a process
         /// On Windows, this reads output from WMI commands
-        /// On UNIX, this reads output from `ps axo pid,ppid --no-headers`
+        /// On UNIX, this reads output from `ps axo pid,ppid`
         /// </summary>
         /// <param name="parentProcess">
         /// The parent process to use to resolve the process tree IDs
@@ -2195,7 +2195,7 @@ namespace Microsoft.PowerShell.Commands
             {
                 Process ps = new Process();
                 ps.StartInfo.FileName = "ps";
-                ps.StartInfo.Arguments = "axo pid,ppid --no-headers";
+                ps.StartInfo.Arguments = "axo pid,ppid";
                 ps.StartInfo.UseShellExecute = false;
                 ps.StartInfo.RedirectStandardOutput = true;
                 ps.Start();
