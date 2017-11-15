@@ -364,6 +364,7 @@ function Start-PSBuild {
 
         # These runtimes must match those in project.json
         # We do not use ValidateScript since we want tab completion
+        # If this parameter is not provided it will get determined automatically.
         [ValidateSet("win7-x64",
                      "win7-x86",
                      "osx.10.12-x64",
@@ -461,7 +462,7 @@ Fix steps:
     }
 
     # setup arguments
-    $Arguments = @("publish")
+    $Arguments = @("publish","/property:GenerateFullPaths=true")
     if ($Output) {
         $Arguments += "--output", $Output
     }
@@ -506,10 +507,12 @@ Fix steps:
         Start-ResGen
     }
 
-    # handle TypeGen
-    if ($TypeGen -or -not (Test-Path "$PSScriptRoot/src/System.Management.Automation/CoreCLR/CorePsTypeCatalog.cs")) {
+    # Handle TypeGen
+    # .inc file name must be different for Windows and Linux to allow build on Windows and WSL.
+    $incFileName = "powershell_$($Options.Runtime).inc"
+    if ($TypeGen -or -not (Test-Path "$PSScriptRoot/TypeCatalogGen/$incFileName")) {
         log "Run TypeGen (generating CorePsTypeCatalog.cs)"
-        Start-TypeGen
+        Start-TypeGen -IncFileName $incFileName
     }
 
     # Get the folder path where pwsh.exe is located.
@@ -533,7 +536,7 @@ Fix steps:
     # publish netcoreapp2.0 reference assemblies
     try {
         Push-Location "$PSScriptRoot/src/TypeCatalogGen"
-        $refAssemblies = Get-Content -Path "powershell.inc" | Where-Object { $_ -like "*microsoft.netcore.app*" } | ForEach-Object { $_.TrimEnd(';') }
+        $refAssemblies = Get-Content -Path $incFileName | Where-Object { $_ -like "*microsoft.netcore.app*" } | ForEach-Object { $_.TrimEnd(';') }
         $refDestFolder = Join-Path -Path $publishPath -ChildPath "ref"
 
         if (Test-Path $refDestFolder -PathType Container) {
@@ -568,11 +571,24 @@ Fix steps:
         if ($ReleaseTagToUse) {
             $ReleaseVersion = $ReleaseTagToUse
         } else {
-            $ReleaseVersion = (Get-PSCommitId) -replace '^v'
+            $ReleaseVersion = (Get-PSCommitId -WarningAction SilentlyContinue) -replace '^v'
+        }
+        # in VSCode, depending on where you started it from, the git commit id may be empty so provide a default value
+        if (!$ReleaseVersion) {
+            $ReleaseVersion = "6.0.0"
+            $fileVersion = "6.0.0"
+        } else {
+            $fileVersion = $ReleaseVersion.Split("-")[0]
         }
 
-        Start-NativeExecution { & "~/.rcedit/rcedit-x64.exe" "$($Options.Output)" --set-icon "$PSScriptRoot\assets\Powershell_black.ico" `
-            --set-file-version $ReleaseVersion --set-product-version $ReleaseVersion --set-version-string "ProductName" "PowerShell Core 6" `
+        # in VSCode, the build output folder doesn't include the name of the exe so we have to add it for rcedit
+        $pwshPath = $Options.Output
+        if (!$pwshPath.EndsWith("pwsh.exe")) {
+            $pwshPath = Join-Path $Options.Output "pwsh.exe"
+        }
+
+        Start-NativeExecution { & "~/.rcedit/rcedit-x64.exe" $pwshPath --set-icon "$PSScriptRoot\assets\Powershell_black.ico" `
+            --set-file-version $fileVersion --set-product-version $ReleaseVersion --set-version-string "ProductName" "PowerShell Core 6" `
             --set-requested-execution-level "asInvoker" --set-version-string "LegalCopyright" "(C) Microsoft Corporation.  All Rights Reserved." } | Write-Verbose
     }
 
@@ -597,14 +613,10 @@ function Restore-PSModuleToBuild
 
     $modulesDir = Join-Path -Path $publishPath -ChildPath "Modules"
 
-    # Restore modules from myget feed
+    # Restore modules from powershellgallery feed
     Restore-PSModule -Destination $modulesDir -Name @(
         # PowerShellGet depends on PackageManagement module, so PackageManagement module will be installed with the PowerShellGet module.
         'PowerShellGet'
-    )
-
-    # Restore modules from powershellgallery feed
-    Restore-PSModule -Destination $modulesDir -Name @(
         'Microsoft.PowerShell.Archive'
     ) -SourceLocation "https://www.powershellgallery.com/api/v2/"
 }
@@ -1694,7 +1706,11 @@ function Start-DevPowerShell {
 function Start-TypeGen
 {
     [CmdletBinding()]
-    param()
+    param
+    (
+        [ValidateNotNullOrEmpty()]
+        $IncFileName = 'powershell.inc'
+    )
 
     # Add .NET CLI tools to PATH
     Find-Dotnet
@@ -1715,7 +1731,7 @@ function Start-TypeGen
 
     Push-Location "$PSScriptRoot/src/Microsoft.PowerShell.SDK"
     try {
-        $ps_inc_file = "$PSScriptRoot/src/TypeCatalogGen/powershell.inc"
+        $ps_inc_file = "$PSScriptRoot/src/TypeCatalogGen/$IncFileName"
         dotnet msbuild .\Microsoft.PowerShell.SDK.csproj /t:_GetDependencies "/property:DesignTimeBuild=true;_DependencyFile=$ps_inc_file" /nologo
     } finally {
         Pop-Location
@@ -1723,7 +1739,7 @@ function Start-TypeGen
 
     Push-Location "$PSScriptRoot/src/TypeCatalogGen"
     try {
-        dotnet run ../System.Management.Automation/CoreCLR/CorePsTypeCatalog.cs powershell.inc
+        dotnet run ../System.Management.Automation/CoreCLR/CorePsTypeCatalog.cs $IncFileName
     } finally {
         Pop-Location
     }
@@ -2256,8 +2272,8 @@ function Restore-PSModule
     $RepositoryName = "mygetpsmodule"
 
     # Check if the PackageManagement works in the base-oS or PowerShellCore
-    Get-PackageProvider -Name NuGet -ForceBootstrap -Verbose:$VerbosePreference
-    Get-PackageProvider -Name PowerShellGet -Verbose:$VerbosePreference
+    $null = Get-PackageProvider -Name NuGet -ForceBootstrap -Verbose:$VerbosePreference
+    $null = Get-PackageProvider -Name PowerShellGet -Verbose:$VerbosePreference
 
     # Get the existing registered PowerShellGet repositories
     $psrepos = PowerShellGet\Get-PSRepository
