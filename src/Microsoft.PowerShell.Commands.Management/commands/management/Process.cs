@@ -1781,26 +1781,12 @@ namespace Microsoft.PowerShell.Commands
         public SwitchParameter Wait { get; set; }
 
         /// <summary>
-        /// If specified, wait for this number of seconds
+        /// If specified, wait for this number of milliseconds for the process to exit.
         /// </summary>
         [Parameter]
-        [Alias("TimeoutSec")]
         [ValidateNotNullOrEmpty]
-        [ValidateRange(1, 32767)]
-        public int Timeout
-        {
-            get
-            {
-                return _timeout;
-            }
-            set
-            {
-                _timeout = value * 1000;
-                _timeoutSpecified = true;
-            }
-        }
-        private int _timeout = System.Threading.Timeout.Infinite;
-        private bool _timeoutSpecified;
+        [ValidateRange(ValidateRangeKind.Positive)]
+        public int ExitTimeout { get; set; } = Timeout.Infinite;
 
         /// <summary>
         ///  Default Environment
@@ -2036,14 +2022,14 @@ namespace Microsoft.PowerShell.Commands
                 }
             }
 
-            if (Wait.IsPresent || _timeoutSpecified)
+            if (Wait.IsPresent || ExitTimeout != Timeout.Infinite)
             {
                 if (process != null)
                 {
                     if (!process.HasExited)
                     {
 #if UNIX
-                        if (!process.WaitForExit(_timeout))
+                        if (!process.WaitForExit(ExitTimeout))
                         {
                             StopProcessOnTimeout(process);
                         }
@@ -2055,7 +2041,7 @@ namespace Microsoft.PowerShell.Commands
                         if (jobObject.AssignProcessToJobObject(process))
                         {
                             // Wait for the job object to finish, or kill it if a timeout occurs
-                            jobObject.WaitOne(_waithandle, _timeout);
+                            jobObject.WaitOne(_waithandle, ExitTimeout);
                             if (!process.HasExited)
                             {
                                 StopProcessOnTimeout(process);
@@ -2066,7 +2052,7 @@ namespace Microsoft.PowerShell.Commands
                             // WinBlue: 27537 Start-Process -Wait doesn't work in a remote session on Windows 7 or lower.
                             process.Exited += new EventHandler(myProcess_Exited);
                             process.EnableRaisingEvents = true;
-                            if (!process.WaitForExit(_timeout))
+                            if (!process.WaitForExit(ExitTimeout))
                             {
                                 StopProcessOnTimeout(process);
                             }
