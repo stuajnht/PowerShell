@@ -125,13 +125,6 @@ Describe "Start-Process -Timeout" -Tags "Feature","Slow" {
         elseif ($IsLinux -Or $IsMacOS) {
             $pingParam = "-c 30 localhost"
         }
-
-        # Find where test/powershell is so we can find the testexe command relative to it
-        $powershellTestDir = $PSScriptRoot
-        while ($powershellTestDir -notmatch 'test[\\/]powershell$') {
-            $powershellTestDir = Split-Path $powershellTestDir
-        }
-        $testexe = Join-Path (Split-Path $powershellTestDir) tools/TestExe/bin/testexe
     }
 
     It "Should work correctly if process completes before specified time-out" {
@@ -151,7 +144,7 @@ Describe "Start-Process -Timeout" -Tags "Feature","Slow" {
     It "Should stop any descendant processes when the specified time-out is exceeded" {
         Get-Process testexe -ErrorAction SilentlyContinue | Stop-Process
 
-        { Start-Process $testexe -ArgumentList "-createchildprocess 6" -Timeout 10 -RedirectStandardOutput "$TESTDRIVE/output" } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
+        { Start-Process testexe -ArgumentList "-createchildprocess 6" -Timeout 10 -RedirectStandardOutput "$TESTDRIVE/output" } | ShouldBeErrorId "StartProcessTimeoutExceeded,Microsoft.PowerShell.Commands.StartProcessCommand"
 
         # Waiting for a second, as the $testexe processes may still be exiting
         # and the Get-Process cmdlet will count them accidentally
