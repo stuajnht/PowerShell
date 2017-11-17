@@ -2176,6 +2176,7 @@ namespace Microsoft.PowerShell.Commands
         {
             List<int> stopProcessIds = new List<int> {parentProcess.Id};
             string processRelationships = "";
+            bool processesCollected = true;
 #if UNIX
             try
             {
@@ -2188,17 +2189,15 @@ namespace Microsoft.PowerShell.Commands
 
                 processRelationships = ps.StandardOutput.ReadToEnd();
 
-                ps.WaitForExit();
+                if (!ps.WaitForExit(4000) || ps.ExitCode != 0)
+                {
+                    processesCollected = false;
+                }
                 ps.Close();
             }
             catch (Win32Exception)
             {
-                WriteWarning(
-                    StringUtil.Format(ProcessResources.CouldNotResolveProcessTree, parentProcess.ProcessName)
-                    + " "
-                    + ProcessResources.DescendantProcessesPossiblyRunning
-                );
-                return stopProcessIds.ToArray();
+                processesCollected = false;
             }
 #else
             string searchQuery = "Select ProcessID, ParentProcessID From Win32_Process";
@@ -2221,6 +2220,12 @@ namespace Microsoft.PowerShell.Commands
             }
             catch (CimException)
             {
+                processesCollected = false;
+            }
+#endif
+
+            if (!processesCollected)
+            {
                 WriteWarning(
                     StringUtil.Format(ProcessResources.CouldNotResolveProcessTree, parentProcess.ProcessName)
                     + " "
@@ -2228,7 +2233,6 @@ namespace Microsoft.PowerShell.Commands
                 );
                 return stopProcessIds.ToArray();
             }
-#endif
 
             // processList - key: process ID, value: parent process ID
             Dictionary<int, int> processList = new Dictionary<int, int>();
